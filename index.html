@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+  <title>الصفحة الرئيسية</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body { height:100%; overscroll-behavior:none; -webkit-user-select:none; user-select:none; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+      min-height:100vh; display:flex; justify-content:center; align-items:center;
+      direction:rtl; overflow:hidden;
+      touch-action:none; /* disable page panning/zoom gestures */
+    }
+    .container { max-width:1200px; padding:20px; }
+    .grid-container {
+      display:grid; grid-template-columns:repeat(2,1fr); grid-template-rows:repeat(3,1fr);
+      gap:30px; max-width:900px;
+    }
+    .grid-item {
+      background:#fff; border-radius:15px; padding:40px; display:flex;
+      justify-content:center; align-items:center; cursor:pointer;
+      transition:transform .25s ease, box-shadow .25s ease, background .25s ease, color .25s ease;
+      box-shadow:0 10px 30px rgba(0,0,0,.2); min-height:150px;
+    }
+    .grid-item:hover {
+      transform:translateY(-10px);
+      box-shadow:0 15px 40px rgba(0,0,0,.3);
+      background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); color:#fff;
+    }
+    .grid-item h2 { font-size:24px; text-align:center; font-weight:700; }
+    .grid-item:nth-child(5){ grid-column:1 / -1; }
+
+    .image-viewer {
+      display:none; position:fixed; inset:0; background:#000; z-index:1000; cursor:pointer;
+      touch-action:none; /* lock gestures inside viewer */
+    }
+    .image-viewer.active { display:flex; justify-content:center; align-items:center; }
+
+    .image-container {
+      position:relative; width:100vw; height:100vh; overflow:hidden; touch-action:none;
+    }
+    .image-container img {
+      position:absolute; inset:0; margin:auto;
+      max-width:100%; max-height:100%;
+      object-fit:contain;
+      opacity:0; transition:opacity .6s ease;
+      will-change:opacity;
+      user-select:none; pointer-events:none;
+    }
+    .image-container img.show { opacity:1; z-index:2; }
+    .image-container img.hide { opacity:0; z-index:1; }
+
+    .click-instruction, .image-counter { display:none !important; visibility:hidden !important; opacity:0 !important; }
+
+    @media (max-width:768px){
+      .grid-container { grid-template-columns:1fr; gap:20px; }
+      .grid-item:nth-child(5){ grid-column:1; }
+      .grid-item h2{ font-size:20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="grid-container" id="mainMenu">
+      <div class="grid-item" onclick="openGallery(0)"><h2>مشروع الربط الإلكتروني لوسائل خفض مخاطر الأدوية</h2></div>
+      <div class="grid-item" onclick="openGallery(1)"><h2>مشروع راصد</h2></div>
+      <div class="grid-item" onclick="openGallery(2)"><h2>تدشين إنشاء دستور الأدوية السعودي</h2></div>
+      <div class="grid-item" onclick="openGallery(3)"><h2>تدشين الشبكة الوطنية السلامة الأدوية والمنتجات الطبية في الحمل والرضع</h2></div>
+      <div class="grid-item" onclick="openGallery(4)"><h2>نموذج التنبؤ بنقص الأدوية المحتمل باستخدام تقنيات الذكاء الاصطناعي</h2></div>
+    </div>
+  </div>
+
+  <div class="image-viewer" id="imageViewer">
+    <div class="image-container">
+      <img id="currentImage" class="hide" alt="current">
+      <img id="nextImage"    class="hide" alt="next">
+    </div>
+  </div>
+
+  <script>
+    // ---------- Data ----------
+    const galleries = [
+      {
+        name: 'مشــــــــــروع الـــربـــــــــــــط',
+        images: [
+          "images/rabt/الربط تدشين-1.png",
+          "images/rabt/الربط تدشين-2.png",
+          "images/rabt/الربط تدشين-3.png",
+          "images/rabt/الربط تدشين-4.png",
+          "images/rabt/الربط تدشين-5.png",
+          "images/rabt/الربط تدشين-6.png"
+        ]
+      },
+      { name:'مشروع راصد', images:[
+        "images/rased/1.png",
+        "images/rased/تدشين راصد-2.png",
+        "images/rased/تدشين راصد-3.png",
+        "images/rased/تدشين راصد4.png",
+        "images/rased/تدشين راصد-5.png"
+      ] },
+      { name:'أنشتاء دستور', images:[
+        "images/dostor/دستور التدشين-1.png",
+        "images/dostor/دستور التدشين-2.png",
+        "images/dostor/دستور التدشين-3.png",
+        "images/dostor/دستور التدشين-4.png"
+      ] },
+      { name:'الشبكه الوطنيه', images:[
+        "images/shabaka/تدشين سلامة الادوية-1.png",
+        "images/shabaka/تدشين سلامة الادوية-2.png",
+        "images/shabaka/تدشين سلامة الادوية-3.png",
+        "images/shabaka/تدشين سلامة الادوية-4.png",
+        "images/shabaka/تدشين سلامة الادوية-5.png"
+      ] },
+      { name:'تقنيات الذكاء الاصطناعي', images:[
+        "images/ai/1.png",
+        "images/ai/2.png",
+        "images/ai/3.png",
+        "images/ai/4.png"
+      ] }
+    ];
+
+    // ---------- Fullscreen + Orientation + Wake Lock ----------
+    let isFullscreen = false;
+    let wakeLock = null;
+    async function enterFullscreen() {
+      const el = document.documentElement;
+      try {
+        if (el.requestFullscreen) await el.requestFullscreen();
+        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+        else if (el.msRequestFullscreen) el.msRequestFullscreen();
+        isFullscreen = true;
+      } catch {}
+      try { await screen.orientation?.lock?.('landscape'); } catch {}
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen');
+          document.addEventListener('visibilitychange', async () => {
+            if (document.visibilityState === 'visible' && wakeLock?.released) {
+              try { wakeLock = await navigator.wakeLock.request('screen'); } catch {}
+            }
+          });
+        }
+      } catch {}
+    }
+    document.addEventListener('fullscreenchange', () => { isFullscreen = !!document.fullscreenElement; });
+    document.addEventListener('webkitfullscreenchange', () => { isFullscreen = !!document.webkitFullscreenElement; });
+    document.addEventListener('msfullscreenchange', () => { isFullscreen = !!document.msFullscreenElement; });
+
+    // ---------- LRU Cache ----------
+    class LRUCache {
+      constructor(limit = 40) { this.limit = limit; this.map = new Map(); }
+      get(k) { if (!this.map.has(k)) return; const v=this.map.get(k); this.map.delete(k); this.map.set(k,v); return v; }
+      set(k,v){ if(this.map.has(k)) this.map.delete(k); this.map.set(k,v);
+        if(this.map.size>this.limit){ const old=this.map.keys().next().value; const img=this.map.get(old); if(img) img.src=''; this.map.delete(old);}}
+      clear(){ for(const [k,img] of this.map){ if(img) img.src=''; } this.map.clear(); }
+    }
+    const imgCache = new LRUCache(40);
+
+    function loadImage(src) {
+      const cached = imgCache.get(src);
+      if (cached) return Promise.resolve(cached);
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = async () => { if (img.decode) { try { await img.decode(); } catch {} }
+          imgCache.set(src, img); resolve(img); };
+        img.onerror = () => reject(new Error('Failed to load ' + src));
+        img.src = src;
+      });
+    }
+
+    function requestIdle(fn) {
+      if ('requestIdleCallback' in window) return requestIdleCallback(fn, { timeout: 1500 });
+      return setTimeout(() => fn({ timeRemaining: () => 50, didTimeout: true }), 200);
+    }
+
+    // ---------- Viewer State ----------
+    let currentGalleryIndex = -1;
+    let currentImageIndex = 0;
+    let isTransitioning = false;
+    let clickCount = 0, clickTimer = null;
+
+    const viewer = document.getElementById('imageViewer');
+    const viewerEl = viewer;
+    const front  = document.getElementById('currentImage');
+    const back   = document.getElementById('nextImage');
+    let frontImgEl = front, backImgEl = back;
+
+    let galleryEpoch = 0;
+    let fadeTimer = null;
+
+    // ---------- Display Logic (double-buffer with epoch guard) ----------
+    async function showCurrentImage(isFirstLoad = false, epoch = galleryEpoch) {
+      const gallery = galleries[currentGalleryIndex];
+      if (!gallery || !gallery.images.length || epoch !== galleryEpoch) return;
+
+      const src = gallery.images[currentImageIndex];
+
+      if (isFirstLoad) {
+        try {
+          const img = await loadImage(src);
+          if (epoch !== galleryEpoch) return;
+          backImgEl.src = '';
+          frontImgEl.src = img.src;
+          frontImgEl.classList.add('show'); frontImgEl.classList.remove('hide');
+          backImgEl.classList.add('hide');  backImgEl.classList.remove('show');
+        } catch {}
+        if (epoch === galleryEpoch) prefetchNeighbors();
+        return;
+      }
+
+      if (isTransitioning || epoch !== galleryEpoch) return;
+      isTransitioning = true;
+
+      try {
+        const img = await loadImage(src);
+        if (epoch !== galleryEpoch) { isTransitioning = false; return; }
+        backImgEl.src = img.src;
+
+        backImgEl.classList.add('show'); backImgEl.classList.remove('hide');
+        frontImgEl.classList.add('hide'); frontImgEl.classList.remove('show');
+
+        if (fadeTimer) clearTimeout(fadeTimer);
+        fadeTimer = setTimeout(() => {
+          if (epoch !== galleryEpoch) return;
+          [frontImgEl, backImgEl] = [backImgEl, frontImgEl];
+          prefetchNeighbors();
+          isTransitioning = false;
+        }, 620);
+      } catch { isTransitioning = false; }
+    }
+
+    function nextImage() {
+      if (isTransitioning) return;
+      const g = galleries[currentGalleryIndex]; if (!g || !g.images.length) return;
+      currentImageIndex = (currentImageIndex + 1) % g.images.length;
+      showCurrentImage(false);
+    }
+
+    function previousImage() {
+      if (isTransitioning) return;
+      const g = galleries[currentGalleryIndex]; if (!g || !g.images.length) return;
+      currentImageIndex = (currentImageIndex - 1 + g.images.length) % g.images.length;
+      showCurrentImage(false);
+    }
+
+    function openGallery(galleryIndex) {
+      galleryEpoch++; isTransitioning = false;
+      if (fadeTimer) { clearTimeout(fadeTimer); fadeTimer = null; }
+
+      currentGalleryIndex = galleryIndex;
+      currentImageIndex = 0;
+      const g = galleries[galleryIndex];
+      if (!g.images.length) { alert('لم يتم إضافة صور لهذا القسم بعد.'); return; }
+
+      // Reset buffers
+      [frontImgEl, backImgEl] = [front, back];
+      frontImgEl.src = ''; backImgEl.src = '';
+      frontImgEl.className = 'hide'; backImgEl.className = 'hide';
+
+      if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; clickCount = 0; }
+
+      enterFullscreen();
+      document.getElementById('mainMenu').style.display = 'none';
+      viewer.classList.add('active');
+
+      if (navigator.serviceWorker?.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'warmCache', urls: g.images });
+      }
+      for (let i = 0; i < Math.min(4, g.images.length); i++) loadImage(g.images[i]).catch(()=>{});
+
+      const epoch = galleryEpoch;
+      showCurrentImage(true, epoch);
+      requestIdle(() => warmGallery(g));
+    }
+
+    function returnToMenu() {
+      galleryEpoch++;
+      if (fadeTimer) { clearTimeout(fadeTimer); fadeTimer = null; }
+      if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; clickCount = 0; }
+
+      viewer.classList.remove('active');
+      document.getElementById('mainMenu').style.display = 'flex';
+
+      currentGalleryIndex = -1; currentImageIndex = 0; isTransitioning = false;
+
+      frontImgEl.src = ''; backImgEl.src = '';
+      frontImgEl.className = 'hide'; backImgEl.className = 'hide';
+    }
+
+    function prefetchNeighbors() {
+      const g = galleries[currentGalleryIndex]; if (!g) return;
+      const L = g.images.length; if (!L) return;
+      const idxs = [
+        (currentImageIndex + 1) % L,
+        (currentImageIndex + 2) % L,
+        (currentImageIndex - 1 + L) % L,
+        (currentImageIndex + 3) % L
+      ];
+      idxs.forEach(i => loadImage(g.images[i]).catch(()=>{}));
+    }
+
+    function warmGallery(g) {
+      g.images.forEach((src, i) => { setTimeout(() => loadImage(src).catch(()=>{}), i * 50); });
+    }
+
+    // ---------- Long-press fullscreen toggle (7s) with move tolerance ----------
+    const LONGPRESS_MS = 7000, MOVE_TOL_PX = 12;
+    let lpTimer = null, lpRAF = null, lpStart = 0, lpConsumed = false;
+    let lpStartX = 0, lpStartY = 0, lpActiveId = null;
+
+    const lpUI = (() => {
+      const wrap = document.createElement('div');
+      wrap.style.cssText = `
+        position:fixed; left:50%; bottom:24px; transform:translateX(-50%);
+        width:220px; height:6px; background:rgba(255,255,255,.15);
+        border-radius:999px; overflow:hidden; display:none; z-index:2000;
+      `;
+      const bar = document.createElement('div');
+      bar.style.cssText = `height:100%; width:0%; background:#fff; opacity:.9;`;
+      wrap.appendChild(bar);
+      document.body.appendChild(wrap);
+      return { wrap, bar };
+    })();
+
+    function startLongPress(e) {
+      if (!viewer.classList.contains('active') || !e.isPrimary) return;
+      lpConsumed = false;
+      lpStart = performance.now();
+      lpStartX = e.clientX; lpStartY = e.clientY;
+      lpActiveId = e.pointerId;
+      try { e.target.setPointerCapture(lpActiveId); } catch {}
+      lpUI.wrap.style.display = 'block'; lpUI.bar.style.width = '0%';
+      const tick = (t) => {
+        const p = Math.min(1, (t - lpStart) / LONGPRESS_MS);
+        lpUI.bar.style.width = (p * 100) + '%';
+        if (p < 1) lpRAF = requestAnimationFrame(tick);
+      };
+      lpRAF = requestAnimationFrame(tick);
+      lpTimer = setTimeout(async () => {
+        lpConsumed = true; cleanupLongPressUI();
+        if (isFullscreen) {
+          try {
+            if (document.exitFullscreen) await document.exitFullscreen();
+            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+            else if (document.msExitFullscreen) document.msExitFullscreen();
+          } catch {}
+        } else {
+          try { await enterFullscreen(); } catch {}
+        }
+      }, LONGPRESS_MS);
+    }
+    function onPointerMove(e) {
+      if (lpActiveId == null || e.pointerId !== lpActiveId) return;
+      const dx = e.clientX - lpStartX, dy = e.clientY - lpStartY;
+      if ((dx*dx + dy*dy) > (MOVE_TOL_PX * MOVE_TOL_PX)) cancelLongPress();
+    }
+    function cancelLongPress() {
+      if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
+      if (lpRAF)   { cancelAnimationFrame(lpRAF); lpRAF = null; }
+      lpActiveId = null; cleanupLongPressUI();
+    }
+    function cleanupLongPressUI() { lpUI.wrap.style.display = 'none'; lpUI.bar.style.width = '0%'; }
+
+    // ---------- Input Handlers ----------
+    viewerEl.addEventListener('pointerdown', startLongPress);
+    viewerEl.addEventListener('pointermove', onPointerMove);
+    viewerEl.addEventListener('pointerup', cancelLongPress);
+    viewerEl.addEventListener('pointercancel', cancelLongPress);
+    viewerEl.addEventListener('pointerleave', cancelLongPress);
+
+    viewerEl.addEventListener('click', (event) => {
+      if (lpConsumed) { lpConsumed = false; return; }
+      event.preventDefault(); event.stopPropagation();
+      clickCount++;
+      if (clickTimer) clearTimeout(clickTimer);
+      clickTimer = setTimeout(() => {
+        if (clickCount === 1) nextImage();
+        else if (clickCount === 2) previousImage();
+        else returnToMenu();
+        clickCount = 0;
+      }, 300);
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (!viewer.classList.contains('active')) return;
+      if (e.key === 'ArrowRight') nextImage();
+      else if (e.key === 'ArrowLeft') previousImage();
+      else if (e.key === 'Backspace') returnToMenu();
+
+      // Block keyboard zoom
+      if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '0' ||
+          e.code === 'NumpadAdd' || e.code === 'NumpadSubtract')) {
+        e.preventDefault(); e.stopPropagation();
+      }
+    }, { capture:true });
+
+    // Block ctrl+wheel (trackpad pinch zoom) globally
+    document.addEventListener('wheel', (e) => {
+      if (e.ctrlKey) { e.preventDefault(); e.stopImmediatePropagation(); }
+    }, { passive:false, capture:true });
+
+    // iOS/Safari gesture events (harmless elsewhere)
+    ['gesturestart','gesturechange','gestureend'].forEach(type => {
+      document.addEventListener(type, e => e.preventDefault(), { passive:false });
+    });
+
+    // Enter fullscreen on first interaction anywhere
+    let hasEnteredFS = false;
+    document.addEventListener('click', () => {
+      if (!hasEnteredFS) { enterFullscreen(); hasEnteredFS = true; }
+    }, { once:false });
+
+    // Hardening
+    document.addEventListener('contextmenu', e => e.preventDefault());
+    document.addEventListener('dragstart',  e => e.preventDefault());
+    document.addEventListener('selectstart',e => {
+      if (viewer.classList.contains('active')) e.preventDefault();
+    });
+
+    // ---------- Service Worker Registration ----------
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', async () => {
+        try {
+          const swURL = new URL('sw.js', location.href);
+          const scope = new URL('.', location.href).pathname;
+          await navigator.serviceWorker.register(swURL.pathname, { scope });
+        } catch {}
+      });
+    }
+  </script>
+</body>
+</html>
